@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard Administrateur - Quizeo</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .dashboard-content { max-width: 1200px; margin: 50px auto; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        .data-list { list-style: none; padding: 0; }
+        .data-list li { padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .action-btn { margin-left: 10px; padding: 5px 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="dashboard-content">
+        <h1>Tableau de Bord Administrateur 👑</h1>
+        <p>Bienvenue Admin. Gérez les utilisateurs et les quiz de la plateforme.</p>
+
+        <h2>Gérer les Utilisateurs</h2>
+        <ul class="data-list">
+            <li>Utilisateur X (Rôle: École) <button class="action-btn" style="background-color: orange;">Désactiver [cite: 40]</button></li>
+            <li>Utilisateur Y (Rôle: Entreprise) <button class="action-btn" style="background-color: green; color: white;">Activer</button></li>
+            </ul>
+
+        <h2>Gérer les Quiz</h2>
+        <ul class="data-list">
+            <li>Quiz #123 (Statut: Lancé [cite: 38]) <button class="action-btn" style="background-color: orange;">Désactiver [cite: 41]</button></li>
+            <li>Quiz #456 (Statut: Terminé [cite: 38]) <button class="action-btn" style="background-color: green; color: white;">Activer</button></li>
+            </ul>
+        
+        <p><a href="index.html" class="link-switch">Déconnexion</a></p>
+    </div>
+</body>
+</html>
