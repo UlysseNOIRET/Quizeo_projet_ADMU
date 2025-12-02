@@ -1,0 +1,131 @@
+Colonne,Type de Donnée,Description,Rôle
+id_utilisateur,INT,Clé Primaire.,Tous
+nom_compte,VARCHAR(100),Nom de l'utilisateur/École/Entreprise.,Tous
+email,VARCHAR(150),Email (pour modification de profil utilisateur).,Tous
+mot_de_passe,CHAR(60),Hachage du mot de passe.,Tous
+role,ENUM(...),"'administrateur', 'ecole', 'entreprise', 'simple_utilisateur'.",Tous
+est_actif,BOOLEAN,"Statut du compte (activé par défaut, désactivable par Admin).",Admin
+nom / prenom / adresse,VARCHAR,Informations personnelles (pour simple_utilisateur).,Utilisateur Simple
+
+Colonne,Type de Donnée,Description,Rôle
+id_quiz,INT,Clé Primaire.,Tous
+titre,VARCHAR(255),,Tous
+id_createur,INT,Clé Étrangère vers utilisateur.,École/Entreprise
+statut,ENUM(...),"'en_cours_ecriture', 'lance', 'termine'.",Tous
+date_creation,DATETIME,,Tous
+est_actif,BOOLEAN,Statut du quiz (désactivable par Admin).,Admin
+
+
+Table,Colonne,Type de Donnée,Description,Exigence
+question,id_question,INT,Clé Primaire.,
+question,id_quiz,INT,Clé Étrangère vers quiz.,
+question,enonce,TEXT,Le texte de la question.,
+question,type_question,ENUM(...),'qcm' (École/Entreprise) ou 'reponse_libre' (Entreprise seulement).,
+question,points,INT,Points attribués à la question (pour les Écoles).,École
+reponse_proposee,id_reponse_proposee,INT,Clé Primaire.,
+reponse_proposee,id_question,INT,Clé Étrangère vers question.,
+reponse_proposee,texte_reponse,VARCHAR(255),Option de réponse du QCM.,
+reponse_proposee,est_correcte,BOOLEAN,Vrai si c'est la bonne réponse.,
+
+
+Table,Colonne,Type de Donnée,Description,Exigence
+resultat_utilisateur,id_resultat,INT,Clé Primaire.,
+resultat_utilisateur,id_utilisateur,INT,Clé Étrangère du participant.,Utilisateur Simple
+resultat_utilisateur,id_quiz,INT,Clé Étrangère du quiz.,
+resultat_utilisateur,note_totale,FLOAT,Note sur le total des points (pour les Écoles).,École
+resultat_utilisateur,pourcentage_reussi,FLOAT,Pourcentage de bonnes réponses (pour les Entreprises).,Entreprise
+reponse_utilisateur,id_reponse_utilisateur,INT,Clé Primaire.,
+reponse_utilisateur,id_resultat,INT,Clé Étrangère vers resultat_utilisateur.,
+reponse_utilisateur,id_question,INT,Question à laquelle il est répondu.,
+reponse_utilisateur,reponse_texte,TEXT,Réponse écrite (pour les questions libres).,
+reponse_utilisateur,id_reponse_choisie,INT,Clé Étrangère vers l'option QCM choisie.,
+
+
+
+
+
+
+script a lancer pour creer base de donnees : 
+
+-- Création de la Base de Données
+CREATE DATABASE IF NOT EXISTS db_quizzeo;
+USE db_quizzeo;
+
+-- 1. Table Utilisateur
+CREATE TABLE utilisateur (
+    id_utilisateur INT PRIMARY KEY AUTO_INCREMENT,
+    nom_compte VARCHAR(100) NOT NULL UNIQUE,
+    email VARCHAR(150) UNIQUE,
+    mot_de_passe CHAR(60) NOT NULL, -- Taille pour hachage bcrypt
+    role ENUM('administrateur', 'ecole', 'entreprise', 'simple_utilisateur') NOT NULL,
+    est_actif BOOLEAN DEFAULT TRUE,
+    nom VARCHAR(100),
+    prenom VARCHAR(100),
+    adresse VARCHAR(255),
+    date_inscription DATETIME NOT NULL
+);
+
+-- 2. Table Quiz
+CREATE TABLE quiz (
+    id_quiz INT PRIMARY KEY AUTO_INCREMENT,
+    titre VARCHAR(255) NOT NULL,
+    description TEXT,
+    id_createur INT NOT NULL,
+    statut ENUM('en_cours_ecriture', 'lance', 'termine') NOT NULL,
+    date_creation DATETIME NOT NULL,
+    est_actif BOOLEAN DEFAULT TRUE,
+    
+    FOREIGN KEY (id_createur) REFERENCES utilisateur(id_utilisateur)
+);
+
+-- 3. Table Question
+CREATE TABLE question (
+    id_question INT PRIMARY KEY AUTO_INCREMENT,
+    id_quiz INT NOT NULL,
+    enonce TEXT NOT NULL,
+    type_question ENUM('qcm', 'reponse_libre') NOT NULL,
+    points INT DEFAULT 0,
+    
+    FOREIGN KEY (id_quiz) REFERENCES quiz(id_quiz) ON DELETE CASCADE
+);
+
+-- 4. Table Réponse Proposée (pour QCM)
+CREATE TABLE reponse_proposee (
+    id_reponse_proposee INT PRIMARY KEY AUTO_INCREMENT,
+    id_question INT NOT NULL,
+    texte_reponse VARCHAR(255) NOT NULL,
+    est_correcte BOOLEAN NOT NULL,
+    
+    FOREIGN KEY (id_question) REFERENCES question(id_question) ON DELETE CASCADE
+);
+
+-- 5. Table Résultat Utilisateur (Suivi global)
+CREATE TABLE resultat_utilisateur (
+    id_resultat INT PRIMARY KEY AUTO_INCREMENT,
+    id_utilisateur INT NOT NULL,
+    id_quiz INT NOT NULL,
+    date_soumission DATETIME NOT NULL,
+    note_totale FLOAT,
+    pourcentage_reussi FLOAT,
+    
+    FOREIGN KEY (id_utilisateur) REFERENCES utilisateur(id_utilisateur),
+    FOREIGN KEY (id_quiz) REFERENCES quiz(id_quiz)
+);
+
+-- 6. Table Réponse Utilisateur (Détail des réponses)
+CREATE TABLE reponse_utilisateur (
+    id_reponse_utilisateur INT PRIMARY KEY AUTO_INCREMENT,
+    id_resultat INT NOT NULL,
+    id_question INT NOT NULL,
+    reponse_texte TEXT,
+    id_reponse_choisie INT,
+    est_correct BOOLEAN,
+    
+    FOREIGN KEY (id_resultat) REFERENCES resultat_utilisateur(id_resultat) ON DELETE CASCADE,
+    FOREIGN KEY (id_question) REFERENCES question(id_question),
+    FOREIGN KEY (id_reponse_choisie) REFERENCES reponse_proposee(id_reponse_proposee)
+);
+
+-- Insertion de l'administrateur initial
+INSERT INTO utilisateur (nom_compte, email, mot_de_passe, role, date_inscription) 
+VALUES ('admin_master', 'admin@quizzeo.com', 'MOT_DE_PASSE_HACHE_A_DEFINIR', 'administrateur', NOW());
