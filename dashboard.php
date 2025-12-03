@@ -1,22 +1,17 @@
 <?php
-// Note: Dans un vrai projet, la session doit être démarrée ici
-// session_start(); 
+// dashboard.php
+session_start();
 
-// --- SIMULATION DE SESSION (À REMPLACER PAR VOTRE LOGIQUE D'AUTHENTIFICATION) ---
+// Vérification de la connexion (exigence du cahier des charges)
+if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
+    header("location: index.html");
+    exit;
+}
 
-// Supposons que l'utilisateur est déjà connecté et que son rôle est stocké:
-// Cette variable doit être récupérée après une connexion réussie via traitement_connexion.php
-$user_role = 'administrateur'; // Remplacez par une variable de session réelle (ex: $_SESSION['role']) 
+// Récupération du rôle depuis la session
+$user_role = $_SESSION['role'];
 
-// Si l'utilisateur n'est pas connecté, redirigez-le vers la page de connexion
-// if (!isset($_SESSION['role'])) {
-//     header('Location: index.html');
-//     exit;
-// }
-// $user_role = $_SESSION['role'];
-
-// --- LOGIQUE DE REDIRECTION ---
-
+// LOGIQUE DE REDIRECTION BASÉE SUR LE RÔLE
 switch ($user_role) {
     case 'administrateur':
         header('Location: admin_home.html');
@@ -31,8 +26,9 @@ switch ($user_role) {
         header('Location: utilisateur_home.html');
         exit;
     default:
-        // Gérer les rôles non reconnus ou les erreurs
-        header('Location: index.html?error=role_inconnu');
+        // Cas d'un rôle inconnu (sécurité)
+        session_destroy();
+        header('Location: index.html?error=' . urlencode('Rôle utilisateur non valide.'));
         exit;
 }
 ?>
