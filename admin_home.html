@@ -1,3 +1,18 @@
+<?php
+// admin_home.php
+require_once 'check_session.php';
+require_once 'db_config.php';
+
+// Vérification spécifique au rôle Administrateur
+if ($_SESSION['role'] !== 'administrateur') {
+    header("location: dashboard.php"); // Redirige si le rôle ne correspond pas
+    exit;
+}
+
+$nom_admin = $_SESSION['nom_compte'];
+// --- Le code pour récupérer les listes d'utilisateurs et de quiz viendra ici ---
+
+?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -14,21 +29,27 @@
 <body>
     <div class="dashboard-content">
         <h1>Tableau de Bord Administrateur 👑</h1>
-        <p>Bienvenue Admin. Gérez les utilisateurs et les quiz de la plateforme.</p>
+        <p>Bienvenue **<?php echo htmlspecialchars($nom_admin); ?>**. Gérez les utilisateurs et les quiz de la plateforme.</p>
 
-        <h2>Gérer les Utilisateurs</h2>
+        [cite_start]<h2>Gérer les Utilisateurs (Liste des utilisateurs créés [cite: 35])</h2>
         <ul class="data-list">
-            <li>Utilisateur X (Rôle: École) <button class="action-btn" style="background-color: orange;">Désactiver [cite: 40]</button></li>
-            <li>Utilisateur Y (Rôle: Entreprise) <button class="action-btn" style="background-color: green; color: white;">Activer</button></li>
-            </ul>
+            <?php
+            [cite_start]// --- FUTUR CODE PHP POUR AFFICHER LA LISTE ET LES BOUTONS D'ACTIVATION/DÉSACTIVATION [cite: 40] ---
+            // Exemple statique :
+            echo '<li>Utilisateur X (Rôle: École) <button class="action-btn" style="background-color: orange;">Désactiver</button></li>';
+            ?>
+        </ul>
 
-        <h2>Gérer les Quiz</h2>
+        [cite_start]<h2>Gérer les Quiz (Liste des quiz créés [cite: 37])</h2>
         <ul class="data-list">
-            <li>Quiz #123 (Statut: Lancé [cite: 38]) <button class="action-btn" style="background-color: orange;">Désactiver [cite: 41]</button></li>
-            <li>Quiz #456 (Statut: Terminé [cite: 38]) <button class="action-btn" style="background-color: green; color: white;">Activer</button></li>
-            </ul>
+            <?php
+            [cite_start]// --- FUTUR CODE PHP POUR AFFICHER LA LISTE ET LES BOUTONS D'ACTIVATION/DÉSACTIVATION [cite: 41] ---
+            // Exemple statique :
+            echo '<li>Quiz #123 (Statut: Lancé) <button class="action-btn" style="background-color: orange;">Désactiver</button></li>';
+            ?>
+        </ul>
         
-        <p><a href="index.html" class="link-switch">Déconnexion</a></p>
+        <p><a href="logout.php" class="link-switch">Déconnexion</a></p>
     </div>
 </body>
 </html>
