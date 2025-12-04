@@ -1,18 +1,38 @@
 <?php
 // dashboard.php
+
 session_start();
 
-// Vérification de la connexion (exigence du cahier des charges)
+// Vérification de la connexion (très important pour la sécurité)
 if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
     header("location: index.html");
     exit;
 }
 
-// Récupération du rôle depuis la session
+// ----------------------------------------------------
+// GESTION DE LA REDIRECTION VERS L'URL MEMORISÉE (Quiz)
+// ----------------------------------------------------
+
+if (isset($_SESSION['redirect_to'])) {
+    $redirect_url = $_SESSION['redirect_to'];
+    
+    // Nettoyer la variable de session immédiatement après usage
+    unset($_SESSION['redirect_to']);
+    
+    // Rediriger vers l'URL mémorisée (le quiz)
+    header('Location: ' . $redirect_url);
+    exit;
+}
+
+// ----------------------------------------------------
+// REDIRECTION NORMALE (Si aucun quiz n'est en attente)
+// ----------------------------------------------------
+
 $user_role = $_SESSION['role'];
 
 // LOGIQUE DE REDIRECTION BASÉE SUR LE RÔLE
 switch ($user_role) {
+    // CORRECTION : S'assurer que les liens pointent vers .php
     case 'administrateur':
         header('Location: admin_home.php');
         exit;
