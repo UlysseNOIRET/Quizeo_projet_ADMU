@@ -17,7 +17,16 @@ $mode_edition = false;
 $quiz_id = isset($_GET['id']) ? (int)$_GET['id'] : null;
 $quiz = ['titre' => 'Nouveau Quiz', 'description' => '', 'statut' => 'en_cours_ecriture'];
 $questions = [];
-$message = '';
+$message = isset($_GET['message']) ? htmlspecialchars($_GET['message']) : '';
+$error = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : '';
+
+// Fonction pour lier les paramètres dynamiquement
+if (!function_exists('call_user_func_array')) {
+    function call_user_func_array(callable $callback, array $params) {
+        return $callback(...$params);
+    }
+}
+
 
 // Si un ID de quiz est passé, on est en mode édition
 if ($quiz_id) {
@@ -31,34 +40,75 @@ if ($quiz_id) {
             $quiz = $result->fetch_assoc();
             $mode_edition = true;
             
-            // Récupérer les questions existantes (Exigence du PDF [cite: 49, 58])
-            $sql_questions = "SELECT * FROM question WHERE id_quiz = ?";
-            // ... (Code pour exécuter la requête et stocker les questions)
+            // Récupérer les questions existantes (Exigence du PDF)
+            $sql_questions = "SELECT id_question, enonce, type_question, points FROM question WHERE id_quiz = ?";
+            
+            if ($stmt_q = $conn->prepare($sql_questions)) {
+                $stmt_q->bind_param("i", $quiz_id);
+                $stmt_q->execute();
+                $questions = $stmt_q->get_result()->fetch_all(MYSQLI_ASSOC);
+                $stmt_q->close();
+            }
         }
         $stmt_quiz->close();
     }
 }
 
-// --- LOGIQUE DE TRAITEMENT (SIMPLIFIÉE) ---
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action'])) {
-    if ($_POST['action'] == 'save_base') {
-        // Logique de création ou mise à jour du titre/description dans la table `quiz`
-        $titre = $conn->real_escape_string($_POST['titre']);
-        $description = $conn->real_escape_string($_POST['description']);
-        
-        if ($mode_edition) {
-            // Mise à jour
-            $sql = "UPDATE quiz SET titre=?, description=? WHERE id_quiz=?";
-            $message = "Quiz mis à jour.";
-        } else {
-            // Création initiale (statut par défaut: en_cours_ecriture)
-            $sql = "INSERT INTO quiz (titre, description, id_createur, statut, date_creation) VALUES (?, ?, ?, 'en_cours_ecriture', NOW())";
-            $message = "Quiz créé. Vous pouvez maintenant ajouter des questions.";
-        }
-        // ... (Exécuter la requête SQL)
+// --- LOGIQUE DE TRAITEMENT ---
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['action'] == 'save_base') {
+    
+    // Récupération et nettoyage des données
+    $titre = trim($_POST['titre']);
+    $description = trim($_POST['description']);
+    $success = false;
+    
+    // Définition de la requête
+    if ($quiz_id) {
+        // Mise à jour (si en mode édition)
+        $sql = "UPDATE quiz SET titre=?, description=? WHERE id_quiz=? AND id_createur=?";
+        $message_success = "Quiz mis à jour.";
+        $bind_types = "ssii";
+        $bind_values = [&$titre, &$description, &$quiz_id, &$id_createur];
+    } else {
+        // Création initiale
+        $sql = "INSERT INTO quiz (titre, description, id_createur, statut, date_creation) VALUES (?, ?, ?, 'en_cours_ecriture', NOW())";
+        $message_success = "Quiz créé. Vous pouvez maintenant ajouter des questions.";
+        $bind_types = "ssi";
+        $bind_values = [&$titre, &$description, &$id_createur];
     }
-    // Note: Le traitement pour ajouter une question sera dans un script séparé ou ici.
+    
+    // Exécution de la requête
+    if ($stmt_save = $conn->prepare($sql)) {
+        
+        $params = array_merge([$bind_types], $bind_values);
+        
+        if (call_user_func_array([$stmt_save, 'bind_param'], $params)) {
+            
+            if ($stmt_save->execute()) {
+                $success = true;
+                if (!$quiz_id) {
+                    $quiz_id = $stmt_save->insert_id;
+                    header("location: creation_quiz.php?id=" . $quiz_id . "&message=" . urlencode($message_success));
+                    exit;
+                }
+                $message = $message_success;
+            } else {
+                $error = "Erreur lors de l'enregistrement du quiz: " . $stmt_save->error;
+            }
+        } else {
+            $error = "Erreur de liaison des paramètres pour la requête SQL.";
+        }
+        $stmt_save->close();
+    } else {
+        $error = "Erreur de préparation de la requête SQL: " . $conn->error;
+    }
+    
+    if (!$success && $quiz_id) {
+         header("location: creation_quiz.php?id=" . $quiz_id . "&error=" . urlencode($error));
+         exit;
+    }
 }
+$conn->close();
 
 ?>
 <!DOCTYPE html>
@@ -68,17 +118,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action'])) {
     <title>Création de Quiz - Quizeo</title>
     <link rel="stylesheet" href="style.css">
     <style>
+        /* Utilisez les classes définies dans style.css */
         .quiz-form-container { max-width: 900px; margin: 50px auto; padding: 30px; background: white; border-radius: 8px; box-shadow: 0 0 15px rgba(0,0,0,0.1); }
         .question-list { margin-top: 20px; border-top: 2px solid #ddd; padding-top: 15px; }
         .question-card { border: 1px solid #ccc; padding: 15px; margin-bottom: 10px; border-radius: 5px; }
-        .add-question-section { border: 2px dashed #007bff; padding: 20px; margin-top: 30px; border-radius: 5px; }
-        .btn-lancer { background-color: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }
+        .add-question-section { border: 2px dashed var(--color-primary); padding: 20px; margin-top: 30px; border-radius: 5px; background-color: #f8f9fa; }
+        .error-message { color: var(--color-secondary); font-weight: bold; }
+        .success-message { color: var(--color-success); font-weight: bold; }
     </style>
 </head>
 <body>
     <div class="quiz-form-container">
         <h1><?php echo $mode_edition ? 'Éditer le Quiz : ' . htmlspecialchars($quiz['titre']) : 'Nouveau Quiz'; ?></h1>
-        <?php if (!empty($message)) echo "<p style='color: green;'>$message</p>"; ?>
+        <?php if (!empty($message)) echo "<p class='success-message'>$message</p>"; ?>
+        <?php if (!empty($error)) echo "<p class='error-message'>$error</p>"; ?>
 
         <h2>Informations de Base</h2>
         <form method="POST">
@@ -95,12 +148,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action'])) {
         </form>
 
         <?php if ($mode_edition): ?>
-            <h2 style="margin-top: 40px;">Questions Actuelles</h2>
+            <h2 style="margin-top: 40px;">Questions Actuelles (<?php echo count($questions); ?>)</h2>
             <div class="question-list">
                 <?php if (empty($questions)): ?>
                     <p>Aucune question ajoutée pour l'instant.</p>
                 <?php else: ?>
-                    <?php endif; ?>
+                    <?php foreach ($questions as $q): ?>
+                        <div class="question-card">
+                            <p><strong><?php echo htmlspecialchars($q['enonce']); ?></strong></p>
+                            <small>Type: <?php echo htmlspecialchars($q['type_question']); ?></small>
+                            <?php if ($q['points'] > 0): ?>
+                                <small>| Points: <?php echo $q['points']; ?></small>
+                            <?php endif; ?>
+                            </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
             </div>
 
             <div class="add-question-section">
@@ -128,11 +190,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action'])) {
                     <div id="qcm-options">
                         <h3>Options de Réponse (QCM)</h3>
                         <p>Ajoutez jusqu'à 4 options et cochez celle(s) qui est/sont correcte(s).</p>
-                        <div class="form-group">
-                            <input type="text" name="reponses[]" placeholder="Texte de l'option 1" required>
-                            <input type="checkbox" name="correcte[]" value="0"> Correct
+                        <div class="form-group" style="display:flex; gap: 10px;">
+                            <input type="text" name="reponses[]" placeholder="Option 1" required style="flex-grow: 1;">
+                            <label style="margin: 0; font-weight: normal;"><input type="checkbox" name="correcte[]" value="0"> Correct</label>
                         </div>
+                        <div class="form-group" style="display:flex; gap: 10px;">
+                            <input type="text" name="reponses[]" placeholder="Option 2" required style="flex-grow: 1;">
+                            <label style="margin: 0; font-weight: normal;"><input type="checkbox" name="correcte[]" value="1"> Correct</label>
                         </div>
+                        <div class="form-group" style="display:flex; gap: 10px;">
+                            <input type="text" name="reponses[]" placeholder="Option 3" required style="flex-grow: 1;">
+                            <label style="margin: 0; font-weight: normal;"><input type="checkbox" name="correcte[]" value="2"> Correct</label>
+                        </div>
+                    </div>
 
                     <?php if ($user_role === 'ecole'): ?>
                         <div class="form-group">
@@ -157,14 +227,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action'])) {
     </div>
 
 <script>
-    // Script simple pour masquer/afficher les options QCM si le type de question change (pour Entreprise)
     function toggleQuestionType(type) {
         const qcmOptions = document.getElementById('qcm-options');
+        // Cache ou montre les options QCM
         if (qcmOptions) {
             qcmOptions.style.display = (type === 'qcm') ? 'block' : 'none';
+            // Rend les champs requis seulement si c'est un QCM
+            qcmOptions.querySelectorAll('input[type="text"]').forEach(input => {
+                input.required = (type === 'qcm');
+            });
         }
     }
-    // Appeler une première fois si le rôle est Entreprise
+    
     document.addEventListener('DOMContentLoaded', () => {
         const selectElement = document.getElementById('type_question');
         if (selectElement) {

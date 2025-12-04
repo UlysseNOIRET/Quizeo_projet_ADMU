@@ -4,6 +4,7 @@
 require_once 'check_session.php';
 require_once 'db_config.php';
 
+// Redirige si le rôle n'est pas "simple_utilisateur"
 if ($_SESSION['role'] !== 'simple_utilisateur') {
     header("location: dashboard.php"); 
     exit;
@@ -11,9 +12,9 @@ if ($_SESSION['role'] !== 'simple_utilisateur') {
 
 $id_utilisateur = $_SESSION['id'];
 $nom_utilisateur = $_SESSION['nom_compte'];
-$historique_quiz = [];
+$historique_quiz = []; // <--- Le point-virgule est bien présent ici !
 
-// Récupérer les quiz auxquels l'utilisateur a participé
+// Récupérer les quiz auxquels l'utilisateur a participé (Exigence du PDF)
 $sql = "
     SELECT 
         q.titre, ru.date_soumission, ru.note_totale, ru.pourcentage_reussi, u_creator.nom_compte as createur
@@ -42,8 +43,23 @@ $conn->close();
     <title>Dashboard Utilisateur - Quizeo</title>
     <link rel="stylesheet" href="style.css">
     <style>
+        /* Styles spécifiques pour le dashboard utilisateur */
         .dashboard-content { max-width: 900px; margin: 50px auto; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        .answered-quiz { border: 1px solid #ddd; padding: 15px; margin-bottom: 10px; border-left: 5px solid #007bff; text-align: left; }
+        .answered-quiz { 
+            border: 1px solid #ddd; 
+            padding: 15px; 
+            margin-bottom: 10px; 
+            border-left: 5px solid var(--color-primary); /* Utilisation de la variable CSS */
+            border-radius: 5px; 
+            text-align: left; 
+        }
+        /* Classe utilitaire pour les deux gros boutons d'action */
+        .action-link {
+            display: block; 
+            width: 300px; 
+            margin: 20px auto;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -51,7 +67,15 @@ $conn->close();
         <h1>Dashboard Utilisateur 👋</h1>
         <p>Bienvenue **<?php echo htmlspecialchars($nom_utilisateur); ?>** ! Retrouvez ci-dessous l'historique de vos participations.</p>
         
-        <p><a href="profil.php" class="btn-login" style="display: block; width: 300px; margin: 20px auto;">Gérer mon Profil</a></p>
+        <p>
+            <a href="profil.php" class="btn-login action-link">Gérer mon Profil</a>
+        </p>
+        
+        <p>
+            <a href="liste_quiz_actifs.php" class="btn-register action-link">
+                Voir les Quiz Actifs Disponibles
+            </a>
+        </p>
         
         <h2 style="margin-top: 30px;">Quiz auxquels j'ai répondu (<?php echo count($historique_quiz); ?>)</h2>
         
