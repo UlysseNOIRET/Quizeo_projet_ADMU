@@ -14,16 +14,16 @@ $user_role = $_SESSION['role'];
 // LOGIQUE DE REDIRECTION BASÉE SUR LE RÔLE
 switch ($user_role) {
     case 'administrateur':
-        header('Location: admin_home.html');
+        header('Location: admin_home.php');
         exit;
     case 'ecole':
-        header('Location: ecole_home.html');
+        header('Location: ecole_home.php');
         exit;
     case 'entreprise':
-        header('Location: entreprise_home.html');
+        header('Location: entreprise_home.php');
         exit;
     case 'simple_utilisateur':
-        header('Location: utilisateur_home.html');
+        header('Location: utilisateur_home.php');
         exit;
     default:
         // Cas d'un rôle inconnu (sécurité)

@@ -1,17 +1,21 @@
 <?php
-// traitement_connexion.php
+// traitement_connexion.php (SANS HACHAGE - POUR DÉBOGAGE)
+
 session_start();
 
-require_once 'db_config.php';
+require_once 'db_config.php'; 
+
+$login_error = '';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     
-    $nom_compte = $conn->real_escape_string($_POST['nom_compte']);
-    $mot_de_passe = $_POST['mot_de_passe'];
-    $role_choisi = $conn->real_escape_string($_POST['role']);
+    $nom_compte = $conn->real_escape_string(trim($_POST['nom_compte']));
+    $mot_de_passe = $_POST['mot_de_passe']; // MDP en clair
+    $role_choisi = $conn->real_escape_string(trim($_POST['role']));
     
-    // Requête préparée pour plus de sécurité
-    $sql = "SELECT id_utilisateur, mot_de_passe, role, est_actif FROM utilisateur WHERE nom_compte = ? AND role = ?";
+    $login_error = "Nom de compte, mot de passe ou rôle incorrect.";
+
+    $sql = "SELECT id_utilisateur, nom_compte, mot_de_passe, role, est_actif FROM utilisateur WHERE nom_compte = ? AND role = ?";
     
     if ($stmt = $conn->prepare($sql)) {
         $stmt->bind_param("ss", $param_nom_compte, $param_role);
@@ -22,44 +26,70 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $stmt->store_result();
             
             if ($stmt->num_rows == 1) {
-                $stmt->bind_result($id, $hashed_password, $role, $est_actif);
+                $stmt->bind_result($id, $nom_compte_db, $stored_password, $role, $est_actif);
+                
                 if ($stmt->fetch()) {
                     
-                    // 1. Vérification du mot de passe hashé
-                    if (password_verify($mot_de_passe, $hashed_password)) {
+                    // LECTURE SANS HACHAGE : Trim pour nettoyer les espaces parasites
+                    $stored_password = trim($stored_password); 
+                    
+                    // 2. VÉRIFICATION TEMPORAIRE : Comparaison de chaînes en clair
+                    if ($mot_de_passe === $stored_password) {
                         
-                        // 2. Vérification du statut d'activation (Admin Rôle)
+                        // 3. Vérification du statut d'activation (Rôle Admin)
                         if ($est_actif) {
                             
-                            // Succès : Création de la session
+                            // *** SUCCÈS - DÉMARRER SESSION ***
                             $_SESSION["loggedin"] = true;
                             $_SESSION["id"] = $id;
-                            $_SESSION["nom_compte"] = $nom_compte;
+                            $_SESSION["nom_compte"] = $nom_compte_db;
                             $_SESSION["role"] = $role;
                             
-                            // Redirection vers le contrôleur général
                             header("location: dashboard.php");
                             exit;
                         } else {
-                            // Compte désactivé
-                            $error = "Votre compte a été désactivé par l'administrateur.";
+                            $login_error = "Votre compte a été désactivé par l'administrateur.";
                         }
                     } else {
-                        $error = "Identifiants ou rôle incorrects.";
+                        // Mot de passe invalide
+                        $login_error = "Nom de compte, mot de passe ou rôle incorrect."; 
                     }
                 }
             } else {
-                $error = "Identifiants ou rôle incorrects.";
+                $login_error = "Nom de compte, mot de passe ou rôle incorrect.";
             }
         } else {
-            $error = "Erreur de connexion.";
+            $login_error = "Erreur d'exécution de la requête SQL: " . $conn->error;
         }
+
         $stmt->close();
+    } else {
+        $login_error = "Erreur de préparation de la requête SQL: " . $conn->error;
     }
+    
     $conn->close();
 
-    // En cas d'échec, rediriger vers la page de connexion avec l'erreur
-    header("location: index.html?error=" . urlencode($error));
+    // --- AFFICHAGE DE L'ERREUR EN CAS D'ÉCHEC ---
+    ?>
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <title>Erreur de Connexion</title>
+        <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+        <div class="form-container" style="background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24;">
+            <h1>Échec de la Connexion</h1>
+            <p>**Raison de l'échec :** <?php echo htmlspecialchars($login_error); ?></p>
+            <p>Tentez à nouveau la connexion depuis <a href="index.html">la page de connexion</a>.</p>
+        </div>
+    </body>
+    </html>
+    <?php
+    exit;
+
+} else {
+    header("location: index.html");
     exit;
 }
 ?>
