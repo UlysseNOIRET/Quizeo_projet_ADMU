@@ -1,5 +1,5 @@
 <?php
-// traitement_inscription.php (SANS HACHAGE - POUR DÉBOGAGE)
+// traitement_inscription.php (SÉCURISÉ AVEC HACHAGE)
 session_start();
 
 require_once 'db_config.php';
@@ -24,7 +24,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $error = "Les mots de passe ne correspondent pas.";
         } 
         
-        // 3. Vérification de l'existence du nom de compte (si pas d'erreur avant)
+        // 3. Vérification de l'existence du nom de compte
         if (empty($error)) {
             $sql = "SELECT id_utilisateur FROM utilisateur WHERE nom_compte = ?";
             if ($stmt = $conn->prepare($sql)) {
@@ -40,11 +40,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
         }
         
-        // 4. Insertion du nouvel utilisateur si aucune erreur
+        // 4. Insertion du nouvel utilisateur
         if (empty($error)) {
-            
-            // !!! MODIFICATION ICI : STOCKAGE DU MOT DE PASSE EN CLAIR !!!
-            $password_to_store = $mot_de_passe; 
+            // SÉCURITÉ RÉTABLIE : Hachage du mot de passe
+            $hashed_password = password_hash($mot_de_passe, PASSWORD_BCRYPT);
             
             $sql = "INSERT INTO utilisateur (nom_compte, mot_de_passe, role, date_inscription) VALUES (?, ?, ?, NOW())";
             
@@ -52,7 +51,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $stmt->bind_param("sss", $param_nom_compte, $param_mot_de_passe, $param_role);
                 
                 $param_nom_compte = $nom_compte;
-                $param_mot_de_passe = $password_to_store; // Utilise le mot de passe en clair
+                $param_mot_de_passe = $hashed_password; // On insère le hash sécurisé
                 $param_role = $role;
                 
                 if ($stmt->execute()) {
