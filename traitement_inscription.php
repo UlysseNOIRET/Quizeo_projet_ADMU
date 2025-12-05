@@ -1,5 +1,5 @@
 <?php
-// traitement_inscription.php (SÉCURISÉ AVEC HACHAGE)
+// traitement_inscription.php (SANS HACHAGE - POUR TESTS UNIQUEMENT)
 session_start();
 
 require_once 'db_config.php';
@@ -42,8 +42,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         
         // 4. Insertion du nouvel utilisateur
         if (empty($error)) {
-            // SÉCURITÉ RÉTABLIE : Hachage du mot de passe
-            $hashed_password = password_hash($mot_de_passe, PASSWORD_BCRYPT);
+            // !!! MODIFICATION POUR TEST : STOCKAGE DU MOT DE PASSE EN CLAIR !!!
+            $password_to_store = $mot_de_passe; 
             
             $sql = "INSERT INTO utilisateur (nom_compte, mot_de_passe, role, date_inscription) VALUES (?, ?, ?, NOW())";
             
@@ -51,7 +51,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $stmt->bind_param("sss", $param_nom_compte, $param_mot_de_passe, $param_role);
                 
                 $param_nom_compte = $nom_compte;
-                $param_mot_de_passe = $hashed_password; // On insère le hash sécurisé
+                $param_mot_de_passe = $password_to_store; // Utilise le mot de passe en clair
                 $param_role = $role;
                 
                 if ($stmt->execute()) {
